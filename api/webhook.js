@@ -1,22 +1,27 @@
 export default async function handler(req, res) {
-  const events = req.body.events;
+  try {
 
-  if (events && events.length > 0) {
+    const events = req.body.events;
+
+    if (!events || events.length === 0) {
+      return res.status(200).send("no events");
+    }
+
     const replyToken = events[0].replyToken;
-    const userText = events[0].message?.text;
+    const userText = events[0].message?.text || "สวัสดี";
 
     const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer K8tYcnPGzm3c8ReE+dHJH544y5/z//Q76wYHdFHoF2bHS/O4IunpRmyKn8Ms28pf21QLd5ofDiLFiCPosmxhywN9dyPBSpB9kxFpcm8gMz1t77MZY3dUa0eZaP3z1VaLZPHMnAaPNwliYUsnkkwkAAdB04t89/1O/w1cDnyilFU=`
+        "Authorization": `Bearer ${process.env.OPENAI_KEY}`
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
-            content: "คุณคือ AI ที่ช่วยวิเคราะห์การซื้อสินค้าออนไลน์ ให้คะแนน สรุปข้อเสีย และเตือนความเสี่ยง"
+            content: "คุณคือ AI วิเคราะห์สินค้าออนไลน์ บอกข้อดี ข้อเสีย และให้คะแนน"
           },
           {
             role: "user",
@@ -27,20 +32,33 @@ export default async function handler(req, res) {
     });
 
     const data = await aiResponse.json();
-    const aiText = data.choices[0].message.content;
+
+    console.log("AI RAW:", data);
+
+    let aiText = "AI error";
+
+    if (data.choices && data.choices.length > 0) {
+      aiText = data.choices[0].message.content;
+    } else {
+      aiText = JSON.stringify(data);
+    }
 
     await fetch("https://api.line.me/v2/bot/message/reply", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer YOUR_LINE_TOKEN`
+        "Authorization": `Bearer ${process.env.LINE_TOKEN}`
       },
       body: JSON.stringify({
         replyToken,
         messages: [{ type: "text", text: aiText }]
       })
     });
-  }
 
-  res.status(200).send("ok");
+    res.status(200).send("ok");
+
+  } catch (err) {
+    console.log("ERROR:", err);
+    res.status(500).send("server error");
+  }
 }
