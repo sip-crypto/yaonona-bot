@@ -25,3 +25,32 @@ export default async function handler(req, res) {
 
   res.status(200).send("ok");
 }
+export default async function handler(req, res) {
+  const events = req.body.events;
+
+  if (events && events.length > 0) {
+    const replyToken = events[0].replyToken;
+    const userText = events[0].message?.text;
+
+    const aiText = `กำลังวิเคราะห์: ${userText}`;
+
+    await fetch("https://api.line.me/v2/bot/message/reply", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer YOUR_ACCESS_TOKEN`
+      },
+      body: JSON.stringify({
+        replyToken,
+        messages: [
+          {
+            type: "text",
+            text: aiText
+          }
+        ]
+      })
+    });
+  }
+
+  res.status(200).send("ok");
+}
